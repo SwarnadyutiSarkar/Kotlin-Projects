@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Management System</title>
+</head>
+<body>
+    <h1>Welcome to Event Management System</h1>
+    <div id="events"></div>
+    <script>
+        async function getEvents() {
+            const response = await fetch('/events');
+            const events = await response.json();
+            const eventsDiv = document.getElementById('events');
+            events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.innerHTML = `<h2>${event.name}</h2><p>Date: ${event.date}</p><p>Location: ${event.location}</p><button onclick="register('${event.id}')">Register</button>`;
+                eventsDiv.appendChild(eventDiv);
+            });
+        }
+        async function register(eventId) {
+            const response = await fetch(`/events/${eventId}/register`, { method: 'POST' });
+            const message = await response.text();
+            alert(message);
+        }
+        getEvents();
+    </script>
+</body>
+</html>

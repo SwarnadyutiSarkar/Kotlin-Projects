@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Learning Platform</title>
+</head>
+<body>
+    <h1>Welcome to E-Learning Platform</h1>
+    <div id="courses"></div>
+    <script>
+        async function getCourses() {
+            const response = await fetch('/courses');
+            const courses = await response.json();
+            const coursesDiv = document.getElementById('courses');
+            courses.forEach(course => {
+                const courseDiv = document.createElement('div');
+                courseDiv.innerHTML = `<h2>${course.name}</h2><p>${course.content}</p>`;
+                coursesDiv.appendChild(courseDiv);
+            });
+        }
+        getCourses();
+    </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Management System</title>
+</head>
+<body>
+    <h1>Welcome to Healthcare Management System</h1>
+    <div id="patients"></div>
+    <script>
+        async function getPatients() {
+            const response = await fetch('/patients');
+            const patients = await response.json();
+            const patientsDiv = document.getElementById('patients');
+            patients.forEach(patient => {
+                const patientDiv = document.createElement('div');
+                patientDiv.innerHTML = `<h2>${patient.name}</h2><p>Date of Birth: ${patient.dob}</p><p>Gender: ${patient.gender}</p><button onclick="updateMedicalHistory('${patient.id}')">Update Medical History</button>`;
+                patientsDiv.appendChild(patientDiv);
+            });
+        }
+        async function updateMedicalHistory(patientId) {
+            const medicalHistory = prompt('Enter medical history:');
+            if (medicalHistory !== null) {
+                const response = await fetch(`/patients/${patientId}/medical-history`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(medicalHistory)
+                });
+                const message = await response.text();
+                alert(message);
+            }
+        }
+        getPatients();
+    </script>
+</body>
+</html>
