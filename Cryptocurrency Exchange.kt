@@ -1,42 +1,29 @@
-import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.PriorityBlockingQueue
 
-data class User(val id: String, var balance: Double)
+data class Cryptocurrency(val name: String, var price: Double)
 
-data class Order(val id: String, val userId: String, val type: OrderType, val amount: Double, val price: Double)
+data class Order(val id: Int, val userId: Int, val type: OrderType, val amount: Double, val price: Double) : Comparable<Order> {
+    override fun compareTo(other: Order): Int {
+        return when (type) {
+            OrderType.BUY -> other.price.compareTo(price) // Higher price buys first
+            OrderType.SELL -> price.compareTo(other.price) // Lower price sells first
+        }
+    }
+}
 
 enum class OrderType {
     BUY, SELL
 }
 
-class Exchange {
-    private val users = mutableMapOf<String, User>()
-    private val buyOrders = PriorityQueue<Order> { o1, o2 -> if (o1.price > o2.price) -1 else 1 }
-    private val sellOrders = PriorityQueue<Order> { o1, o2 -> if (o1.price < o2.price) -1 else 1 }
+class OrderBook {
+    private val buyOrders = PriorityBlockingQueue<Order>()
+    private val sellOrders = PriorityBlockingQueue<Order>()
 
-    fun registerUser(userId: String) {
-        if (!users.containsKey(userId)) {
-            users[userId] = User(userId, 0.0)
-        }
-    }
-
-    fun deposit(userId: String, amount: Double) {
-        require(users.containsKey(userId)) { "User not found" }
-        users[userId]?.balance = users[userId]?.balance?.plus(amount) ?: amount
-    }
-
-    fun placeOrder(userId: String, type: OrderType, amount: Double, price: Double) {
-        require(users.containsKey(userId)) { "User not found" }
-
-        val orderId = UUID.randomUUID().toString()
-        val order = Order(orderId, userId, type, amount, price)
-
-        when (type) {
-            OrderType.BUY -> {
-                buyOrders.add(order)
-            }
-            OrderType.SELL -> {
-                sellOrders.add(order)
-            }
+    fun placeOrder(order: Order) {
+        when (order.type) {
+            OrderType.BUY -> buyOrders.add(order)
+            OrderType.SELL -> sellOrders.add(order)
         }
         matchOrders()
     }
@@ -47,55 +34,64 @@ class Exchange {
             val sellOrder = sellOrders.peek()
 
             if (buyOrder.price >= sellOrder.price) {
-                if (buyOrder.amount >= sellOrder.amount) {
-                    executeTrade(buyOrder, sellOrder)
-                    buyOrders.poll()
-                    sellOrders.poll()
-                } else {
-                    executeTrade(buyOrder.copy(amount = sellOrder.amount), sellOrder)
-                    buyOrder.amount -= sellOrder.amount
-                    sellOrders.poll()
-                }
+                val tradeAmount = minOf(buyOrder.amount, sellOrder.amount)
+                println("Executing trade: Buy ${tradeAmount} units at ${sellOrder.price}")
+
+                buyOrders.poll()
+                sellOrders.poll()
             } else {
                 break
             }
         }
     }
+}
 
-    private fun executeTrade(buyOrder: Order, sellOrder: Order) {
-        val buyUser = users[buyOrder.userId]
-        val sellUser = users[sellOrder.userId]
+class User(val id: Int, val balance: Double)
 
-        requireNotNull(buyUser) { "Buyer not found" }
-        requireNotNull(sellUser) { "Seller not found" }
+class CryptocurrencyExchange {
+    private val cryptocurrencies = ConcurrentHashMap<String, Cryptocurrency>()
+    private val orderBook = OrderBook()
+    private val users = ConcurrentHashMap<Int, User>()
 
-        val totalCost = sellOrder.price * sellOrder.amount
-        require(buyUser.balance >= totalCost) { "Insufficient balance for buyer" }
-
-        buyUser.balance -= totalCost
-        sellUser.balance += totalCost
-
-        println("Trade executed: ${sellOrder.amount} units at ${sellOrder.price} ${sellOrder.type} from ${sellOrder.userId} to ${buyOrder.userId}")
+    fun addCryptocurrency(name: String, price: Double) {
+        cryptocurrencies[name] = Cryptocurrency(name, price)
     }
 
-    fun displayBalances() {
-        for ((userId, user) in users) {
-            println("User: $userId, Balance: ${user.balance}")
+    fun updatePrice(name: String, price: Double) {
+        cryptocurrencies[name]?.price = price
+    }
+
+    fun placeOrder(userId: Int, type: OrderType, cryptocurrencyName: String, amount: Double, price: Double) {
+        val user = users[userId] ?: throw IllegalArgumentException("User not found")
+        val cryptocurrency = cryptocurrencies[cryptocurrencyName] ?: throw IllegalArgumentException("Cryptocurrency not found")
+
+        // Check if the user has enough balance for BUY orders (simplified check for demonstration purposes)
+        if (type == OrderType.BUY && user.balance < price * amount) {
+            throw IllegalArgumentException("Insufficient balance")
         }
+
+        val orderId = (1..1000).random() // Simple random order ID generator
+        val order = Order(orderId, userId, type, amount, price)
+        orderBook.placeOrder(order)
+
+        // For simplicity, we're not updating the user's balance or handling more complex scenarios here
     }
 }
 
 fun main() {
-    val exchange = Exchange()
+    val exchange = CryptocurrencyExchange()
 
-    exchange.registerUser("Alice")
-    exchange.registerUser("Bob")
+    // Add some cryptocurrencies
+    exchange.addCryptocurrency("Bitcoin", 50000.0)
+    exchange.addCryptocurrency("Ethereum", 3000.0)
 
-    exchange.deposit("Alice", 100.0)
-    exchange.deposit("Bob", 100.0)
+    // Create a user
+    val user1 = User(id = 1, balance = 100000.0)
+    val user2 = User(id = 2, balance = 100000.0)
+    exchange.users[user1.id] = user1
+    exchange.users[user2.id] = user2
 
-    exchange.placeOrder("Alice", OrderType.BUY, 5.0, 20.0)
-    exchange.placeOrder("Bob", OrderType.SELL, 5.0, 20.0)
-
-    exchange.displayBalances()
+    // Place some orders
+    exchange.placeOrder(userId = 1, type = OrderType.BUY, cryptocurrencyName = "Bitcoin", amount = 1.0, price = 50000.0)
+    exchange.placeOrder(userId = 2, type = OrderType.SELL, cryptocurrencyName = "Bitcoin", amount = 1.0, price = 50000.0)
 }
