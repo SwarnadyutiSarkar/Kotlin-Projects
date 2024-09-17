@@ -1,0 +1,99 @@
+import javafx.application.Application
+import javafx.beans.property.SimpleStringProperty
+import javafx.beans.property.SimpleObjectProperty
+import javafx.geometry.Insets
+import javafx.scene.Scene
+import javafx.scene.control.*
+import javafx.scene.control.cell.PropertyValueFactory
+import javafx.scene.layout.BorderPane
+import javafx.scene.layout.GridPane
+import javafx.stage.Stage
+import javafx.collections.FXCollections
+import javafx.collections.ObservableList
+import java.time.LocalDate
+
+data class Event(val name: String, val date: LocalDate, val location: String)
+
+class EventManagementApp : Application() {
+
+    private val events: ObservableList<Event> = FXCollections.observableArrayList()
+
+    override fun start(primaryStage: Stage) {
+        primaryStage.title = "Event Management System"
+
+        val borderPane = BorderPane()
+
+        // Create TableView
+        val tableView = TableView<Event>()
+        tableView.items = events
+
+        // Create columns
+        val nameColumn = TableColumn<Event, String>("Name").apply {
+            cellValueFactory = PropertyValueFactory("name")
+        }
+        val dateColumn = TableColumn<Event, LocalDate>("Date").apply {
+            cellValueFactory = PropertyValueFactory("date")
+        }
+        val locationColumn = TableColumn<Event, String>("Location").apply {
+            cellValueFactory = PropertyValueFactory("location")
+        }
+
+        tableView.columns.addAll(nameColumn, dateColumn, locationColumn)
+
+        // Create Form
+        val nameField = TextField()
+        val datePicker = DatePicker()
+        val locationField = TextField()
+
+        val addButton = Button("Add Event").apply {
+            setOnAction {
+                val name = nameField.text
+                val date = datePicker.value
+                val location = locationField.text
+
+                if (name.isNotBlank() && date != null && location.isNotBlank()) {
+                    events.add(Event(name, date, location))
+                    nameField.clear()
+                    datePicker.value = null
+                    locationField.clear()
+                } else {
+                    showAlert(Alert.AlertType.WARNING, "Form Error", "Please fill in all fields")
+                }
+            }
+        }
+
+        val formGrid = GridPane().apply {
+            padding = Insets(10.0)
+            hgap = 10.0
+            vgap = 10.0
+
+            add(Label("Event Name:"), 0, 0)
+            add(nameField, 1, 0)
+            add(Label("Date:"), 0, 1)
+            add(datePicker, 1, 1)
+            add(Label("Location:"), 0, 2)
+            add(locationField, 1, 2)
+            add(addButton, 1, 3)
+        }
+
+        borderPane.center = tableView
+        borderPane.bottom = formGrid
+
+        val scene = Scene(borderPane, 600.0, 400.0)
+        primaryStage.scene = scene
+        primaryStage.show()
+    }
+
+    private fun showAlert(alertType: Alert.AlertType, title: String, content: String) {
+        Alert(alertType).apply {
+            this.title = title
+            this.headerText = null
+            this.contentText = content
+            showAndWait()
+        }
+    }
+}
+
+fun main() {
+    Application.launch(EventManagementApp::class.java)
+}
